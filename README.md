@@ -50,8 +50,8 @@ SpamDetector/
 │
 └── static/
     └── styles.css            # Optional CSS file for styling
----
 
+```
 ## 🙌 Acknowledgements
 
 - Dataset from [UCI Spam Collection](https://archive.ics.uci.edu/ml/datasets/sms+spam+collection)
