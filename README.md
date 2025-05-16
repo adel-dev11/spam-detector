@@ -38,18 +38,17 @@ These features are passed to an `IsolationForest` model trained only on clean (h
 
 ```bash
 SpamDetector/
-├── app.py                    # Flask web application
-├── train_model.py            # Script to train and save the Isolation Forest model
-├── huffman.py                # Huffman encoding algorithm used in compression ratio
-├── spam.csv                  # Dataset used for training (must include 'ham'/'spam' labels)
-├── iforest_model.pkl         # Trained Isolation Forest model
-├── README.md                 # Project documentation (this file)
-│
+├── scripts
+│   └── app.py                # Flask web application
+│   └── huffman_codde.py      # Huffman encoding algorithm used in compression ratio
+│   └── train_model.py        # Script to train and save the Isolation Forest model
+├── dataset
+│   └── spam.csv              # Dataset used for training (must include 'ham'/'spam' labels)
+├── docs
+│   └── iforest_model.pkl     # Trained Isolation Forest model 
 ├── templates/
 │   └── index.html            # HTML template for the web app
-│
-└── static/
-    └── styles.css            # Optional CSS file for styling
+├── README.md                 # Project documentation (this file)
 
 ```
 ## 🙌 Acknowledgements
