@@ -25,10 +25,13 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
 app = Flask(__name__)
 
-with open('iforest_model.pkl', 'rb') as f:
+with open('iforest_model_full.pkl', 'rb') as f:
     model = pickle.load(f)
 
-keywords = ['free', 'win', 'offer', 'click', 'buy', 'cheap', 'money', 'prize', 'urgent']
+keywords = [
+    'free', 'win', 'offer', 'click', 'buy', 'cheap', 'money', 'prize', 'urgent',
+    'subscription', 'charged', 'confirm', 'reply', 'yes', 'no', 'mobile', 'claim', 'cash'
+]
 
 def repetition_ratio(text):
     words = text.split()
@@ -40,11 +43,14 @@ def repetition_ratio(text):
 def compression_ratio(text):
     if not text:
         return 0, 0, 0
-    encoded, decoded, codes = huffman_coding(text)
-    original_size = len(text) * 8  
-    compressed_size = len(encoded) if encoded else original_size
-    ratio = original_size / compressed_size if compressed_size != 0 else 0
-    return original_size, compressed_size, ratio
+    try:
+        encoded, decoded, codes = huffman_coding(text)
+        original_size = len(text) * 8
+        compressed_size = len(encoded) if encoded else original_size
+        ratio = original_size / compressed_size if compressed_size != 0 else 0
+        return ratio, original_size, compressed_size
+    except:
+        return 0, 0, 0
 
 def exclamation_ratio(text):
     if not text:
@@ -63,29 +69,44 @@ def weird_chars_ratio(text):
         return 0
     allowed_chars = set(string.ascii_letters + string.digits + ' ')
     weird_chars = [ch for ch in text if ch not in allowed_chars]
-    return len(weird_chars) / len(text)
+    return len(weird_chars) / len(text) if text else 0
 
 def has_very_long_word(text, length_threshold=15):
     words = text.split()
-    for w in words:
-        if len(w) > length_threshold:
-            return True
-    return False
+    return any(len(w) > length_threshold for w in words)
 
 def keyword_presence(text):
     text_lower = text.lower()
     return [1 if kw in text_lower else 0 for kw in keywords]
 
+def uppercase_ratio(text):
+    if not text:
+        return 0
+    uppercase_chars = sum(1 for ch in text if ch.isupper())
+    return uppercase_chars / len(text) if text else 0
+
+def special_symbols_ratio(text):
+    if not text:
+        return 0
+    special_symbols = [ch for ch in text if ch in ['£', '$', '%', '&', '*', '#']]
+    return len(special_symbols) / len(text) if text else 0
+
+def raw_length(text):
+    return len(text)
+
 def extract_features(text):
     length = len(text.split())
     rep_ratio = repetition_ratio(text)
+    comp_ratio, original_size, compressed_size = compression_ratio(text)
     excl_ratio = exclamation_ratio(text)
     weird_ratio = weird_words_ratio(text)
-    original_size, compressed_size, comp_ratio = compression_ratio(text)
     weird_chars = weird_chars_ratio(text)
     very_long = 1 if has_very_long_word(text) else 0
     kw_presence = keyword_presence(text)
-    features = [length, rep_ratio, comp_ratio, excl_ratio, weird_ratio, weird_chars, very_long] + kw_presence
+    upper_ratio = uppercase_ratio(text)
+    special_ratio = special_symbols_ratio(text)
+    text_length = raw_length(text)
+    features = [length, rep_ratio, comp_ratio, excl_ratio, weird_ratio, weird_chars, very_long, upper_ratio, special_ratio, text_length] + kw_presence
     return np.array(features).reshape(1, -1), original_size, compressed_size, comp_ratio
 
 @app.route('/', methods=['GET', 'POST'])
@@ -93,34 +114,24 @@ def index():
     result = None
     if request.method == 'POST':
         email_text = request.form['email']
+        
+        if not email_text.strip():
+            return render_template('index.html', result={'error': 'Please enter a valid email text.'})
+
         features, original_size, compressed_size, comp_ratio = extract_features(email_text)
-        pred = model.predict(features)[0]  
-        label = 'Spam' if pred == -1 else 'Ham'
-
-        length = int(features[0][0])
-        weird_ratio = float(features[0][4])
-        weird_chars_val = float(features[0][5])
-        very_long_val = int(features[0][6])
-
-        if length > 50 and weird_ratio > 0.4:
+        
+        if comp_ratio > 2.7:
             label = 'Spam'
-        if weird_chars_val > 0.3:
-            label = 'Spam'
-        if very_long_val == 1:
-            label = 'Spam'
-
+        else:
+            pred = model.predict(features)[0]
+            label = 'Spam' if pred == -1 else 'Ham'
+        
         result = {
             'label': label,
             'original_size': original_size,
             'compressed_size': compressed_size,
             'compression_ratio': round(comp_ratio, 3),
-            'length': length,
-            'repetition_ratio': round(float(features[0][1]), 3),
-            'exclamation_ratio': round(float(features[0][3]), 3),
-            'weird_words_ratio': round(weird_ratio, 3),
-            'weird_chars_ratio': round(weird_chars_val, 3),
-            'very_long_word': bool(very_long_val),
-            'keywords_found': [k for k, present in zip(keywords, features[0][7:]) if present == 1]
+            
         }
 
     return render_template('index.html', result=result)
