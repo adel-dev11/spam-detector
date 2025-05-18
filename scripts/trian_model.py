@@ -28,17 +28,18 @@ import pandas as pd
 import numpy as np
 import pickle
 import string
-from huffman import huffman_coding  
+from huffman import huffman_coding
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
-df = pd.read_csv('spam.csv', encoding='latin-1')  
-
+df = pd.read_csv('spam.csv', encoding='latin-1')
 df = df[['v1', 'v2']].dropna()
-
 df['label'] = df['v1'].map({'ham': 0, 'spam': 1})
 
-keywords = ['free', 'win', 'offer', 'click', 'buy', 'cheap', 'money', 'prize', 'urgent']
+keywords = [
+    'free', 'win', 'offer', 'click', 'buy', 'cheap', 'money', 'prize', 'urgent',
+    'subscription', 'charged', 'confirm', 'reply', 'yes', 'no', 'claim', 'cash'
+]
 
 def repetition_ratio(text):
     words = text.split()
@@ -50,12 +51,13 @@ def repetition_ratio(text):
 def compression_ratio(text):
     if not text:
         return 0
-    encoded, decoded, codes = huffman_coding(text)
-    original_size = len(text) * 8
-    compressed_size = len(encoded) if encoded else original_size
-    if compressed_size == 0:
+    try:
+        encoded, decoded, codes = huffman_coding(text)
+        original_size = len(text) * 8
+        compressed_size = len(encoded) if encoded else original_size
+        return original_size / compressed_size if compressed_size != 0 else 0
+    except:
         return 0
-    return original_size / compressed_size
 
 def exclamation_ratio(text):
     if not text:
@@ -74,18 +76,30 @@ def weird_chars_ratio(text):
         return 0
     allowed_chars = set(string.ascii_letters + string.digits + ' ')
     weird_chars = [ch for ch in text if ch not in allowed_chars]
-    return len(weird_chars) / len(text)
+    return len(weird_chars) / len(text) if text else 0
 
 def has_very_long_word(text, length_threshold=15):
     words = text.split()
-    for w in words:
-        if len(w) > length_threshold:
-            return True
-    return False
+    return any(len(w) > length_threshold for w in words)
 
 def keyword_presence(text):
     text_lower = text.lower()
     return [1 if kw in text_lower else 0 for kw in keywords]
+
+def uppercase_ratio(text):
+    if not text:
+        return 0
+    uppercase_chars = sum(1 for ch in text if ch.isupper())
+    return uppercase_chars / len(text) if text else 0
+
+def special_symbols_ratio(text):
+    if not text:
+        return 0
+    special_symbols = [ch for ch in text if ch in ['£', '$', '%', '&', '*', '#']]
+    return len(special_symbols) / len(text) if text else 0
+
+def raw_length(text):
+    return len(text)
 
 def extract_features(text):
     length = len(text.split())
@@ -96,18 +110,25 @@ def extract_features(text):
     weird_chars = weird_chars_ratio(text)
     very_long = 1 if has_very_long_word(text) else 0
     kw_presence = keyword_presence(text)
-    features = [length, rep_ratio, comp_ratio, excl_ratio, weird_ratio, weird_chars, very_long] + kw_presence
+    upper_ratio = uppercase_ratio(text)
+    special_ratio = special_symbols_ratio(text)
+    text_length = raw_length(text)
+    features = [length, rep_ratio, comp_ratio, excl_ratio, weird_ratio, weird_chars, very_long, upper_ratio, special_ratio, text_length] + kw_presence
     return features
 
 X = np.array([extract_features(t) for t in df['v2']])
 y = df['label'].values
 
-X_train = X[y == 0]
+model = IsolationForest(contamination=0.15, random_state=42)
+model.fit(X)
 
-model = IsolationForest(contamination=0.1, random_state=42)
-model.fit(X_train)
-
-with open('iforest_model.pkl', 'wb') as f:
+with open('iforest_model_full.pkl', 'wb') as f:
     pickle.dump(model, f)
 
-print("Model trained and saved successfully.")
+predictions = model.predict(X)
+predicted_labels = [1 if pred == -1 else 0 for pred in predictions]  
+accuracy = np.mean(predicted_labels == y)
+print(f"Model trained on full dataset and saved successfully.")
+print(f"Accuracy on the dataset: {accuracy:.4f}")
+
+
