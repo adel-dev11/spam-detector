@@ -33,70 +33,168 @@ Author: Adel Muhammad Haiba | CS Student & ML Enthusiast
     
     <style>
         body {
-            background: linear-gradient(to right, #e0f7fa, #ffffff);
+            background: linear-gradient(to right, #27b4a1, #7694c8);
             font-family: 'Cairo', sans-serif;
             direction: rtl;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
         .container {
-            padding: 40px 20px;
+            max-width: 900px;
+            padding: 40px 0;
         }
         .card {
-            border-radius: 18px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
             padding: 30px;
-            max-width: 1000px;
-            margin: auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, #0d6efd, #00ff88);
+        }
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #0d6efd;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
         }
         .btn-success {
             font-size: 1.2rem;
-            padding: 12px;
-            font-weight: bold;
+            padding: 12px 30px;
+            border-radius: 10px;
+            background: linear-gradient(to right, #00ff88, #0d6efd);
+            border: none;
+            transition: transform 0.2s ease;
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
         }
         .result-box {
             margin-top: 30px;
+            padding: 20px;
+            border-radius: 15px;
             animation: fadeIn 1s ease-in-out;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .result-box.spam {
+            background: rgba(220, 53, 69, 0.1);
+            border: 2px solid #dc3545;
         }
-        .badge {
-            font-size: 1rem;
+        .result-box.ham {
+            background: rgba(40, 167, 69, 0.1);
+            border: 2px solid #28a745;
+        }
+        .hacker-img {
+            max-width: 150px;
+            margin: 20px auto;
+            display: block;
+            border-radius: 10px;
+        }
+        .list-group-item {
+            background: transparent;
+            border: none;
+            font-size: 1.1rem;
         }
         .list-group-item strong {
             color: #0d6efd;
+        }
+        .badge {
+            font-size: 1rem;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        .no-result {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 20px;
+        }
+        .email-text {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 150px;
+            overflow-y: auto;
+            direction: ltr;
+            text-align: left;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 576px) {
+            .card {
+                padding: 20px;
+            }
+            .btn-success {
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <h2 class="text-center mb-4 text-primary">📩 E-mail analysis Spam or Ham</h2>
+            <h2 class="text-center mb-4 text-primary">📩 Spam Detector: Spam أو Ham</h2>
             <form method="POST">
-                <div class="mb-3">
+                <div class="mb-4">
                     <label for="email" class="form-label">✍️ أدخل نص الإيميل:</label>
                     <textarea class="form-control" name="email" id="email" rows="6" placeholder="اكتب نص الإيميل هنا..." required></textarea>
                 </div>
                 <button type="submit" class="btn btn-success w-100">🔍 تحليل الإيميل</button>
             </form>
-            <div class="result-box">
-                <h4 class="text-center text-info">📊 النتيجة:</h4>
+            <div class="result-box {{ 'spam' if result.label == 'Spam' else 'ham' }}">
+                <h4 class="text-center mb-4 text-info">📊 النتيجة:</h4>
                 <ul class="list-group">
-                    <li class="list-group-item">📄 <strong>عدد الكلمات:</strong> {{ result.length }}</li>
-                    <li class="list-group-item">🗜️ <strong>الحجم الأصلي:</strong> {{ result.original_size }} بايت</li>
-                    <li class="list-group-item">🧩 <strong>الحجم بعد الضغط:</strong> {{ result.compressed_size }} بايت</li>
-                    <li class="list-group-item">📈 <strong>نسبة الضغط:</strong> {{ result.compression_ratio }}</li>
-                    </li>
-                    <li class="list-group-item">
-                        📬 <strong>التصنيف:</strong>
+                     📬 <strong>Classification:</strong>
                         <span class="badge bg-{{ 'danger' if result.label == 'Spam' else 'success' }} px-3 py-2">
                             {{ result.label }}
                         </span>
+                    <li class="list-group-item"> <strong>Word no:</strong> {{ result.length }}</li>
+                    <li class="list-group-item"> <strong>Original size:</strong> {{ result.original_size }} Bit</li>
+                    <li class="list-group-item"> <strong>Size after compression:</strong> {{ result.compressed_size }} Bit</li>
+                    <li class="list-group-item"> <strong>Compression ratio:</strong> {{ result.compression_ratio }}</li>
+                    <li class="list-group-item">
                     </li>
                 </ul>
             </div>
+            <div class="no-result">
+                <p>📪 لم يتم تحليل أي إيميل بعد. أدخل النص واضغط "تحليل الإيميل"!</p>
+            </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+        function launchFireworks() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#00ff88', '#0d6efd', '#ffffff']
+                });
+            } else {
+                console.error('Confetti library not loaded.');
+            }
+        }
+    </script>
 </body>
 </html>
